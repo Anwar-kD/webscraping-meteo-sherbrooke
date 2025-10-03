@@ -1,31 +1,72 @@
 import requests
+from bs4 import BeautifulSoup
 import pandas as pd
+from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import random, time
 
-# Identifiant de la station (Sherbrooke)
-station_id = 48371
+# Configuration
+station_id = "48371"  # Sherbrooke
+base_url = "https://climate.weather.gc.ca/climate_data/hourly_data_e.html"
 
-# Années à télécharger
-annees = range(2019, 2026)
+# Headers
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+}
 
-# Liste pour stocker les DataFrames
-dataframes = []
+weather_data = []
 
-for annee in annees:
-    # Construire l'URL du CSV
-    url = f"https://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID={station_id}&Year={annee}&Month=1&Day=1&timeframe=2&submit=Download+Data"
-    
-    print(f"Téléchargement des données pour {annee}...")
-    
-    # Lire le CSV depuis l’URL
-    df = pd.read_csv(url, skiprows=0)
-    
-    # Ajouter à la liste
-    dataframes.append(df)
+# Fonction pour scraper une journée
+def scrape_day(date):
+    url = f"{base_url}?StationID={station_id}&Year={date.year}&Month={date.month}&Day={date.day}&timeframe=1"
+    print(f"Scraping {date.strftime('%Y-%m-%d')}")
+    day_data = []
 
-# Fusionner tous les DataFrames en un seul
-df_final = pd.concat(dataframes, ignore_index=True)
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-# Sauvegarder dans un fichier CSV unique
-df_final.to_csv("sherbrooke_meteo_2019_2025.csv", index=False)
+        table = soup.find('table', class_='table')
+        if table:
+            rows = table.find_all('tr')[1:]  # Skip header
+            for row in rows:
+                cells = row.find_all(['td', 'th'])
+                if len(cells) >= 3:
+                    time_cell = cells[0].get_text().strip()
+                    temp_cell = cells[1].get_text().strip()
+                    try:
+                        temp = float(temp_cell)
+                        day_data.append({
+                            'date': date.strftime('%Y-%m-%d'),
+                            'time': time_cell,
+                            'temperature': temp
+                        })
+                    except:
+                        pass
 
-print("Fichier créé : sherbrooke_meteo_2019_2025.csv")
+        # Petit délai aléatoire pour éviter surcharge
+        time.sleep(random.uniform(0.5, 1.5))
+
+    except Exception as e:
+        print(f"Erreur pour {date}: {e}")
+
+    return day_data
+
+
+# Générer les dates (105 derniers jours)
+dates = [datetime.now() - timedelta(days=i) for i in range(105)]
+
+# Exécuter en parallèle
+with ThreadPoolExecutor(max_workers=5) as executor:
+    futures = [executor.submit(scrape_day, d) for d in dates]
+    for future in as_completed(futures):
+        weather_data.extend(future.result())
+
+# Sauvegarder
+if weather_data:
+    df = pd.DataFrame(weather_data)
+    df.to_csv('sherbrooke_summer_hourly_weather2025.csv', index=False)
+    print(f"Données sauvegardées: {len(weather_data)} entrées")
+    print(df.head())
+else:
+    print("Aucune donnée récupérée")
