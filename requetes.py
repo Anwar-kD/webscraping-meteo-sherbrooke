@@ -1,4 +1,8 @@
-
+####################################################################
+#CRÉATEUR : BRAHIM DAHOU
+#DATE_DE_CREATION : 26-09-2025
+#DATE_DE_MODIFICATION : 04-10-2025
+####################################################################
 from pymongo import MongoClient
 
 # Connexion à MongoDB Atlas

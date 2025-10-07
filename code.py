@@ -1,3 +1,9 @@
+####################################################################
+#CRÉATEUR : ANWAR OUKRID
+#DATE_DE_CREATION : 25-09-2025
+#DATE_DE_MODIFICATION : 07-10-2025
+####################################################################
+
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -53,8 +59,8 @@ def scrape_day(date):
     return day_data
 
 
-# Générer les dates (105 derniers jours)
-dates = [datetime.now() - timedelta(days=i) for i in range(105)]
+# Générer les dates (107 derniers jours)
+dates = [datetime.now() - timedelta(days=i) for i in range(107)]
 
 # Exécuter en parallèle
 with ThreadPoolExecutor(max_workers=5) as executor:
